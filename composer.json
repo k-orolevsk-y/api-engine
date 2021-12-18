@@ -1,0 +1,13 @@
+{
+    "name": "k-orolevsk-y/api.korolevsky.me",
+    "description": "API for VK.COM",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "k-orolevsk-y",
+            "email": "i@korolevsky.me"
+        }
+    ],
+    "require": {}
+}
