@@ -1,9 +1,8 @@
 <?php
 	namespace Me\Korolevsky\Api\Utils;
 
-	use Exception;
-	use JetBrains\PhpStorm\ArrayShape;
 	use Me\Korolevsky\Api\DB\Server;
+	use JetBrains\PhpStorm\ArrayShape;
 
 	class Authorization {
 
@@ -39,7 +38,7 @@
 
 			try {
 				$token = bin2hex(random_bytes(24));
-			} catch(Exception) {
+			} catch(\Exception) {
 				$token = uniqid() . uniqid(). uniqid();
 			}
 

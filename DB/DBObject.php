@@ -1,9 +1,7 @@
 <?php
 	namespace Me\Korolevsky\Api\DB;
 
-	use ArrayObject;
-
-	class DBObject extends ArrayObject {
+	class DBObject extends \ArrayObject {
 
 		protected array $object;
 		protected array $__info;
