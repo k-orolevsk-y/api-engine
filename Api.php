@@ -67,7 +67,7 @@
 		private function customExceptionHandler(): void {
 			set_exception_handler(function(\Exception|\Error $exception) {
 				if(self::getParams()['debug']) {
-					return new Response(500, new ErrorResponse(500, "Server error.", [ 'server_error' => $exception->getMessage() ]));
+					return new Response(500, new ErrorResponse(500, "Server error.", [ 'server' => [ 'error_message' => $exception->getMessage(), 'error_traceback' => $exception->getTrace() ], ]));
 				} else {
 					return new Response(500, new ErrorResponse(500, "Server error."));
 				}

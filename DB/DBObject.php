@@ -24,6 +24,11 @@
 		}
 
 		public function getInfo(string $key): mixed {
+			return @$this->__info[$key];
+		}
+
+		public function setInfo(string $key, mixed $value): mixed {
+			$this->__info[$key] = $value;
 			return $this->__info[$key];
 		}
 

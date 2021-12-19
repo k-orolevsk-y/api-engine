@@ -34,8 +34,10 @@
 			$rows = $this->connect->query($query);
 			$result = [];
 
-			foreach($rows as $row) {
-				$result[] = $row;
+			if(is_array($rows) || is_object($rows)) {
+				foreach($rows as $row) {
+					$result[] = $row;
+				}
 			}
 
 			return $this->autoTypeConversion($result);
@@ -44,7 +46,7 @@
 		public function findOne(string $table, string $query = '', array $params = []): DBObject {
 			$query = $this->select("SELECT * FROM `$table` $query", $params);
 
-			return new DBObject($query[0], $table);
+			return new DBObject($query[0] ?? [], $table);
 		}
 
 		public function count(string $table, string $query = '', array $params = []): int {
@@ -86,13 +88,20 @@
 				}
 				$query = mb_strcut($query, 0, -2);
 
-				$id_key = array_search('id', $keys);
-				$query .= " WHERE `$table`.`id` = " . $values[$id_key];
+				$id = $values[array_search('id', $keys)];
+				$id = !is_numeric($id) ? "'$id'" : intval($id);
+
+				$query .= " WHERE `$table`.`id` = $id";
+				$result = $this->connect->query($query);
 			} else {
 				$query = "INSERT INTO `$table` (`".implode('`,`', $keys)."`) VALUES (".implode(',',$values).")";
+
+				$result = $this->connect->query($query);
+				$object->setInfo('id', $this->connect->insert_id);
 			}
 
-			return !$this->connect->query($query) ? false : $object;
+			$object['id'] = $object->getInfo('id');
+			return !$result ? false : $object;
 		}
 
 		public function isConnected(): bool {
