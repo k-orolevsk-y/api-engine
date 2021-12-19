@@ -21,15 +21,15 @@
 		/**
 		 * @throws MethodAlreadyExists
 		 */
-		public function addMethod(string $method, array $params, callable $function, int $limits = 150,
+		public function addMethod(string $method, callable $function, array $params = [], int $limits = 150,
 		                          bool $need_authorization = true, bool $need_admin = false): void {
 			if(!empty($this->methods[$method])) {
 				throw new MethodAlreadyExists();
 			}
 
 			$this->methods[$method] = [
-				'params' => $params,
 				'callable' => $function,
+				'params' => $params,
 				'limits' => $limits,
 				'need_authorization' => $need_authorization,
 				'need_admin' => $need_admin
