@@ -56,14 +56,14 @@
 			$method = $this->methods[$method];
 			$params = self::getParams();
 
-			if(($missed = array_diff($method['params'], array_keys(array_diff($params, [null])))) != null ) {
-				return new Response(400, new ErrorResponse(400, "Parameters error: ".array_shift($missed)." a required parameter."));
-			}
-
 			if($method['need_authorization']) {
 				if(!Authorization::isAuth($server, $params['access_token'])) {
-					return new Response(401, new ErrorResponse(401, "Authorization failed."));
+					return new Response(401, new ErrorResponse(401, "Authorization failed: access_token was missing or invalid."));
 				}
+			}
+
+			if(($missed = array_diff($method['params'], array_keys(array_diff($params, [null])))) != null ) {
+				return new Response(400, new ErrorResponse(400, "Parameters error: ".array_shift($missed)." a required parameter."));
 			}
 
 			return call_user_func($method['callable'], $servers, self::getParams());

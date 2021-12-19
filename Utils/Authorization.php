@@ -10,7 +10,7 @@
 
 		public static function isAuth(Server $server, string|null $access_token): bool {
 			$token = $server->findOne('access_tokens', "WHERE `access_token` = ?", [ $access_token ]);
-			if($token == null) {
+			if($token->isNull()) {
 				return false;
 			}
 
@@ -19,7 +19,7 @@
 
 		public static function getUserId(Server $server, string $access_token): int {
 			$token = $server->findOne('access_tokens', "WHERE `access_token` = ?", [ $access_token ]);
-			if($token == null) {
+			if($token->isNull()) {
 				return 0;
 			}
 
@@ -29,7 +29,7 @@
 		#[ArrayShape(['id' => "int", 'token' => "string"])]
 		public static function getAccessToken(Server $server, int $user_id): array {
 			$access_token = $server->findOne('access_tokens', 'WHERE `user_id` = ?', [ $user_id ]);
-			if($access_token != null) {
+			if(!$access_token->isNull()) {
 				return [
 					'id' => intval($access_token['id']),
 					'token' => $access_token['access_token']
@@ -57,12 +57,12 @@
 
 		public static function checkingLimits(Server $server, string $method, string $access_token): bool {
 			$token = $server->findOne('access_tokens', "WHERE `access_token` = ?", [ $access_token ]);
-			if($token == null) {
+			if($token->isNull()) {
 				return false;
 			}
 
 			$limits = $server->findOne('limits', 'WHERE `access_token_id` = ? AND `method` = ?', [ $token['id'], $method ]);
-			if($limits == null) {
+			if($limits->isNull()) {
 				$limits = $server->dispense('limits');
 				$limits['access_token_id'] = $token['id'];
 			}

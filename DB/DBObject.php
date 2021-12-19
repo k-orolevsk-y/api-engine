@@ -18,6 +18,10 @@
 			parent::__construct($object);
 		}
 
+		public function isNull(): bool {
+			return $this->getArrayCopy() == null;
+		}
+
 		public function changeId(int|string $id): int|string {
 			$this->__info['id'] = $id;
 			return $this->__info['id'];

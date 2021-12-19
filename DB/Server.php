@@ -26,11 +26,21 @@
 		}
 
 		public function select(string $query, array $params = []): array|null {
-			foreach($params as $param) {
+			foreach($params as $key => $param) {
+				if(is_array($param) || is_object($param)) {
+					$param = json_encode((array) $param);
+				} elseif($param === null) {
+					$param = "NULL";
+				}
+
+				$param = $this->connect->real_escape_string($param);
+				if(is_string($params[$key])) {
+					$param = "'".$param."'";
+				}
+
 				$query = preg_replace('/\?/', $param, $query, 1);
 			}
 
-			$query = $this->connect->real_escape_string($query);
 			$rows = $this->connect->query($query);
 			$result = [];
 
