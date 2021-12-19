@@ -21,13 +21,14 @@
 		/**
 		 * @throws MethodAlreadyExists
 		 */
-		public function addMethod(string $method, callable $function, int $limits = 150,
+		public function addMethod(string $method, array $params, callable $function, int $limits = 150,
 		                          bool $need_authorization = true, bool $need_admin = false): void {
 			if(!empty($this->methods[$method])) {
 				throw new MethodAlreadyExists();
 			}
 
 			$this->methods[$method] = [
+				'params' => $params,
 				'callable' => $function,
 				'limits' => $limits,
 				'need_authorization' => $need_authorization,
@@ -43,7 +44,7 @@
 			if(empty($this->methods[$method])) {
 				return new Response(404, new ErrorResponse(404, "Unknown method requested."));
 			} elseif(!$servers->isConnected()) {
-				return new Response(404, new ErrorResponse(400, "Error connecting database, try later.", [ 'db' => [ 'error_message' => $servers->getErrorConnect() ] ]));
+				return new Response(404, new ErrorResponse(500, "Error connecting database, try later.", [ 'db' => [ 'error_message' => $servers->getErrorConnect() ] ]));
 			}
 
 			if($servers instanceof Servers) {
@@ -54,6 +55,10 @@
 
 			$method = $this->methods[$method];
 			$params = self::getParams();
+
+			if(($missed = array_diff($method['params'], array_keys(array_diff($params, [null])))) != null ) {
+				return new Response(400, new ErrorResponse(400, "Parameters error: ".array_shift($missed)." a required parameter."));
+			}
 
 			if($method['need_authorization']) {
 				if(!Authorization::isAuth($server, $params['access_token'])) {
