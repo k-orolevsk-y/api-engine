@@ -1,7 +1,7 @@
 <?php
 	namespace Me\Korolevsky\Api\DB;
 
-	class DBObject extends \ArrayObject {
+	final class DBObject extends \ArrayObject {
 
 		protected array $object;
 		protected array $__info;
@@ -16,6 +16,15 @@
 			$this->object = $object;
 
 			parent::__construct($object);
+		}
+
+		public function changeId(int|string $id): int|string {
+			$this->__info['id'] = $id;
+			return $this->__info['id'];
+		}
+
+		public function getInfo(string $key): mixed {
+			return $this->__info[$key];
 		}
 
 	}

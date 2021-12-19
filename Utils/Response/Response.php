@@ -1,6 +1,7 @@
 <?php
 	namespace Me\Korolevsky\Api\Utils\Response;
 
+	use JetBrains\PhpStorm\ArrayShape;
 	use JetBrains\PhpStorm\NoReturn;
 
 	class Response {
@@ -21,6 +22,11 @@
 
 		public function getHttpCode(): int {
 			return $this->http_code;
+		}
+
+		#[ArrayShape(['ok' => "bool", 'response' => "array"])]
+		public function getResponse(): array {
+			return $this->response->getResponse();
 		}
 
 		public function __toString(): string {

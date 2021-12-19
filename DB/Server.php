@@ -54,15 +54,45 @@
 		}
 
 		public function dispense(string $table): DBObject {
-			return new DBObject([ 'id' => 0 ], $table);
+			return new DBObject([ 'id' => null ], $table);
 		}
 
-		public function store(DBObject &$object): DBObject {
-			if($object['id'] == 0) {
-				$object['id'] = null;
+		public function store(DBObject &$object): DBObject|false {
+			$table = $object->getInfo('table');
+
+			$keys = array_keys($object->getArrayCopy());
+			$values = array_values($object->getArrayCopy());
+
+			foreach($values as $key => $value) {
+				if(is_array($value) || is_object($value)) {
+					$value = json_encode((array) $value);
+				} elseif($value === null) {
+					$value = "NULL";
+				}
+
+				$values[$key] = $this->connect->real_escape_string($value);
+				if(is_string($value)) {
+					$values[$key] = "'".$values[$key]."'";
+				}
 			}
 
-			return $object;
+			if($object['id'] != null) {
+				$query = "UPDATE `$table` SET ";
+				foreach($values as $key => $value) {
+					$key = $keys[$key];
+					if($key == 'id') continue;
+
+					$query .= "`$key` = $value, ";
+				}
+				$query = mb_strcut($query, 0, -2);
+
+				$id_key = array_search('id', $keys);
+				$query .= " WHERE `$table`.`id` = " . $values[$id_key];
+			} else {
+				$query = "INSERT INTO `$table` (`".implode('`,`', $keys)."`) VALUES (".implode(',',$values).")";
+			}
+
+			return !$this->connect->query($query) ? false : $object;
 		}
 
 		public function isConnected(): bool {
