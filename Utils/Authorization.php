@@ -6,6 +6,8 @@
 
 	class Authorization {
 
+		public static bool $is_auth = false;
+
 		private function __construct() {}
 
 		public static function isAuth(Server $server, string|null $access_token): bool {
@@ -14,6 +16,7 @@
 				return false;
 			}
 
+			self::$is_auth = true;
 			return true;
 		}
 
@@ -66,6 +69,11 @@
 				$limits = $server->dispense('limits');
 				$limits['access_token_id'] = $token['id'];
 			}
+		}
+
+
+		public static function setIsAuth(bool $is_auth): void {
+			self::$is_auth = $is_auth;
 		}
 
 	}

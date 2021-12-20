@@ -3,6 +3,7 @@
 
 	use Me\Korolevsky\Api\Api;
 	use JetBrains\PhpStorm\ArrayShape;
+	use Me\Korolevsky\Api\Utils\Authorization;
 
 	class ErrorResponse {
 
@@ -24,7 +25,7 @@
 				if($key == "access_token") {
 					$params[] = [
 						'key' => 'oauth',
-						'value' => 1
+						'value' => (int) Authorization::$is_auth
 					];
 					continue;
 				}
