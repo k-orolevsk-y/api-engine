@@ -58,7 +58,7 @@
 			];
 		}
 
-		public static function checkingLimits(Server $server, string $method, string $access_token): bool {
+		public static function checkingLimits(Server $server, array $limits, string $method, string $access_token): bool {
 			$token = $server->findOne('access_tokens', "WHERE `access_token` = ?", [ $access_token ]);
 			if($token->isNull()) {
 				return false;

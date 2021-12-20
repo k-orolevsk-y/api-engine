@@ -3,9 +3,9 @@
 
 	use Me\Korolevsky\Api\DB\Server;
 	use Me\Korolevsky\Api\DB\Servers;
-	use Me\Korolevsky\Api\Exceptions\InvalidFunction;
 	use Me\Korolevsky\Api\Utils\Authorization;
 	use Me\Korolevsky\Api\Utils\Response\Response;
+	use Me\Korolevsky\Api\Exceptions\InvalidFunction;
 	use Me\Korolevsky\Api\Utils\Response\ErrorResponse;
 	use Me\Korolevsky\Api\Exceptions\MethodAlreadyExists;
 
@@ -13,8 +13,13 @@
 
 		private array $methods;
 		private mixed $functionNeedAdmin; // PHP 8.0 not supported private class variable of callable
-		private array $functionNeedAuthorization;
+		private array $functionNeedAuthorization;// callable, parameter, header/get&post
 
+		/**
+		 * API Constructor.
+		 *
+		 * @param bool $need_custom_exception_handler
+		 */
 		public function __construct(bool $need_custom_exception_handler = true) {
 			if($need_custom_exception_handler) {
 				$this->customExceptionHandler();
@@ -22,9 +27,26 @@
 		}
 
 		/**
+		 * Add a method for future processing.
+		 *
+		 * Example:
+		 * <code>
+		 *      $api = new Api();
+		 *      $api->addMethod("users.get", function(Server $server, array $params): Response {
+		 *          $user = $server->findOne("users", "WHERE `user_id` = ?, [ Authorization::getUserId($params['access_token')) ]);
+		 *          return new Response(200, new OKResponse([ 'user' => $user ]) ;
+		 *      });
+		 * </code>
+		 *
+		 * @param string $method: name of method
+		 * @param callable $function: function method
+		 * @param array $params: need required params
+		 * @param array $limits: limits of [day, hour, 3 seconds]
+		 * @param bool $need_authorization: whether it is necessary to check authorization
+		 * @param bool $need_admin: whether it is necessary to check administrator rights
 		 * @throws MethodAlreadyExists
 		 */
-		public function addMethod(string $method, callable $function, array $params = [], int $limits = 150,
+		public function addMethod(string $method, callable $function, array $params = [], array $limits = [1500, 150, 2],
 		                          bool $need_authorization = true, bool $need_admin = false): void {
 			if(!empty($this->methods[$method])) {
 				throw new MethodAlreadyExists();
@@ -45,11 +67,11 @@
 		 *
 		 * Example:
 		 * <code>
-		 *  $api = new Api();
-		 *  $api->setNeedAdminFunction(function(Servers|Server $servers, int $user_id): bool {
-		 *      $admin = $servers->findOne('admins', 'WHERE `user_id` = ?', [ $user_id ]);
-		 *      return !$admin->isNull();
-		 *  });
+		 *      $api = new Api();
+		 *      $api->setNeedAdminFunction(function(Servers|Server $servers, int $user_id): bool {
+		 *          $admin = $servers->findOne('admins', 'WHERE `user_id` = ?', [ $user_id ]);
+		 *          return !$admin->isNull();
+		 *      });
 		 * </code>
 		 *
 		 * @param callable $function
@@ -83,16 +105,16 @@
 		 *
 		 * Example:
 		 * <code>
-		 *  $api = new Api();
-		 *  $api->setCustomNeedAuthorizationFunction(function(Servers|Server $servers, string $parameter): bool {
-		 *      $admin = $servers->findOne('admins', 'WHERE `x-vk` = ?', [ $parameter ]);
-		 *      return !$admin->isNull();
-		 *  }, 'x-vk', false);
+		 *      $api = new Api();
+		 *      $api->setCustomNeedAuthorizationFunction(function(Servers|Server $servers, string $parameter): bool {
+		 *          $admin = $servers->findOne('admins', 'WHERE `x-vk` = ?', [ $parameter ]);
+		 *          return !$admin->isNull();
+		 *      }, 'x-vk', false);
 		 * </code>
 		 *
 		 * @param callable $function
 		 * @param string $parameter: name of parameter
-		 * @param boolean $type: true - GET/POST parameters, false - Header parameters
+		 * @param bool $type: true - GET/POST parameters, false - Header parameters
 		 * @throws InvalidFunction
 		 */
 		public function setCustomNeedAuthorizationFunction(callable $function, string $parameter, bool $type = true): void {
@@ -117,12 +139,27 @@
 			$this->functionNeedAuthorization = [$function, $parameter, $type];
 		}
 
+		/**
+		 * Get a merge array of GET and POST parameters.
+		 *
+		 * @return array
+		 */
 		public static function getParams(): array {
 			return array_change_key_case(array_merge($_GET, $_POST), CASE_LOWER);
 		}
 
-		public function processRequest(string $method, Servers|Server $servers): Response {
-			if(empty($this->methods[$method])) {
+		/**
+		 * Start the function to process the request.
+		 * Notice: the first server will be used to check different data (authorization, limits).
+		 * [All Servers/Server are sent to custom handlers]
+		 *
+		 * @param string $method_name
+		 * @param Servers|Server $servers
+		 * @return Response
+		 * @throws DB\Exceptions\ServerNotExists
+		 */
+		public function processRequest(string $method_name, Servers|Server $servers): Response {
+			if(empty($this->methods[$method_name])) {
 				return new Response(404, new ErrorResponse(404, "Unknown method requested."));
 			} elseif(!$servers->isConnected()) {
 				return new Response(404, new ErrorResponse(500, "Error connecting database, try later.", [ 'db' => [ 'error_message' => $servers->getErrorConnect() ] ]));
@@ -134,7 +171,7 @@
 				$server = $servers;
 			}
 
-			$method = $this->methods[$method];
+			$method = $this->methods[$method_name];
 			$params = self::getParams();
 
 			if($method['need_authorization']) {
@@ -158,6 +195,9 @@
 					}
 				}
 			}
+			if(!Authorization::checkingLimits($server, $method['limits'], $method_name, $params['access_token'])) {
+
+			}
 			if($method['need_admin']) {
 				$user_id = Authorization::getUserId($server, $params['access_token']);
 				if(is_int($user_id)) {
@@ -166,19 +206,22 @@
 					}
 				}
 			}
-			if(($missed = array_diff($method['params'], array_keys(array_diff($params, [null])))) != null ) {
-				return new Response(400, new ErrorResponse(400, "Parameters error: ".array_shift($missed)." a required parameter."));
+			if(($missed = array_diff($method['params'], array_keys(array_diff($params, [null])))) != null) {
+				return new Response(400, new ErrorResponse(400, "Parameters error or invalid: ".array_shift($missed)." a required parameter."));
 			}
 
 			return call_user_func($method['callable'], $servers, self::getParams());
 		}
 
+		/**
+		 * Custom API exceptions handler.
+		 */
 		private function customExceptionHandler(): void {
 			set_exception_handler(function(\Exception|\Error $exception) {
 				if(self::getParams()['debug']) {
-					return new Response(500, new ErrorResponse(500, "Server error.", [ 'server' => [ 'error_message' => $exception->getMessage(), 'error_traceback' => $exception->getTrace() ], ]));
+					return new Response(500, new ErrorResponse(500, "Internal server error.", [ 'server' => [ 'error_message' => $exception->getMessage(), 'error_traceback' => $exception->getTrace() ], ]));
 				} else {
-					return new Response(500, new ErrorResponse(500, "Server error."));
+					return new Response(500, new ErrorResponse(500, "Internal server error."));
 				}
 			});
 		}
