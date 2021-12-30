@@ -82,7 +82,7 @@
 			try {
 				$f = new \ReflectionFunction($function);
 
-				$allowed_types = [ 'Me\Korolevsky\Api\DB\Servers', 'Me\Korolevsky\Api\DB\Server', 'int' ];
+				$allowed_types = [ 'Me\Korolevsky\Api\DB\Servers|Me\Korolevsky\Api\DB\Server', 'int' ];
 				foreach($f->getParameters() as $parameter) {
 					if(!in_array(strval($parameter->getType()), $allowed_types)) {
 						throw new \Exception();
@@ -122,7 +122,7 @@
 			try {
 				$f = new \ReflectionFunction($function);
 
-				$allowed_types = [ 'Me\Korolevsky\Api\DB\Servers', 'Me\Korolevsky\Api\DB\Server', 'string' ];
+				$allowed_types = [ 'Me\Korolevsky\Api\DB\Servers|Me\Korolevsky\Api\DB\Server', 'string' ];
 				foreach($f->getParameters() as $reflectionParameter) {
 					if(!in_array(strval($reflectionParameter->getType()), $allowed_types)) {
 						throw new \Exception();
@@ -140,11 +140,42 @@
 			$this->functionNeedAuthorization = [$function, $parameter, $type];
 		}
 
+		/**
+		 * Adds alternative functions for different checks during request processing.
+		 *
+		 * Example:
+		 * <code>
+		 *      $api = new Api();
+		 *      $api->addAltFunction(function(Servers|Server $servers, array $params): ?Response {
+		 *          $random = rand(0,1);
+		 *          if($random) {
+		 *              return new Response(200, new ErrorResponse(10, "You are won!"));
+		 *          }
+		 *
+		 *          return null;
+		 *      });
+		 * </code>
+		 *
+		 * @param callable $function
+		 * @throws InvalidFunction
+		 */
 		public function addAltFunction(callable $function): void {
 			try {
+				$f = new \ReflectionFunction($function);
 
+				$allowed_types = [ 'Me\Korolevsky\Api\DB\Servers|Me\Korolevsky\Api\DB\Server', 'array' ];
+				foreach($f->getParameters() as $reflectionParameter) {
+					if(!in_array(strval($reflectionParameter->getType()), $allowed_types)) {
+						throw new \Exception();
+					}
+				}
+
+				$params = $f->getNumberOfRequiredParameters();
+				if($params != 2) {
+					throw new \Exception();
+				}
 			} catch(\Exception) {
-
+				throw new InvalidFunction("Alt function is invalid.");
 			}
 
 			$this->altFunctions[] = $function;
@@ -224,9 +255,9 @@
 					}
 				}
 			}
-			if($this->altFunctions != null) {
+			if(!empty($this->altFunctions)) {
 				foreach($this->altFunctions as $function) {
-
+					call_user_func($function, $servers, self::getParams());
 				}
 			}
 			if(($missed = array_diff($method['params'], array_keys(array_diff($params, [null])))) != null) {

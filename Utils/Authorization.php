@@ -60,8 +60,31 @@
 			];
 		}
 
-		public function resetAccessToken(): array {
+		public function resetAccessToken(Server $server, string $access_token): ?array {
+			$token = $server->findOne('access_tokens', "WHERE `access_token` = ?", [ $access_token ]);
+			if($token->isNull()) {
+				return null;
+			}
+			$server->trash($token);
 
+			try {
+				$token = bin2hex(random_bytes(24));
+			} catch(\Exception) {
+				$token = uniqid() . uniqid(). uniqid();
+			}
+
+			$access_token = $server->dispense('access_tokens');
+			$access_token['user_id'] = $token['user_id'];
+			$access_token['access_token'] = $token;
+			$access_token['time'] = time();
+			$access_token['ip'] = Ip::get();
+			$access_token['without_limits'] = 0;
+			$server->store($access_token);
+
+			return [
+				'id' => intval($access_token['id']),
+				'token' => $token
+			];
 		}
 
 		/**
@@ -87,13 +110,12 @@
 				'ip' => "limits_".Ip::get()
 			];
 
-
 			$returned_code = 1;
 			foreach($keys as $key) {
 				$times = ['second' => 1, 'half_hour' => 1800, 'hour' => 3600];
 				foreach($times as $name => $time) {
 					$key_for_limits = $name == "second" ? 0 : ($name == "half_hour" ? 1 : 2);
-					if($limits[$key] < 1) {
+					if($limits[$key_for_limits] < 2) {
 						continue;
 					}
 
@@ -102,6 +124,8 @@
 					if(!$limit) {
 						$limit = [0, time()+$time];
 						$memcached->setByKey($server->getDbName(), $key, $limit, $limit[1]);
+					} elseif($limit[1] < time()) {
+						$limit = [0, time()+$time];
 					}
 
 					$limit[0] += 1;

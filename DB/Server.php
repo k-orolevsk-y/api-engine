@@ -116,6 +116,17 @@
 			return !$result ? false : $object;
 		}
 
+		public function trash(DBObject $object): bool {
+			$table = $object->getInfo('table');
+
+			if(empty($object['id']) || empty($table)) {
+				return false;
+			}
+
+			$this->connect->query("DELETE FROM `$table` WHERE `$table`.`id` = ".$this->connect->real_escape_string($object['id']));
+			return true;
+		}
+
 		/**
 		 * @return string
 		 */
