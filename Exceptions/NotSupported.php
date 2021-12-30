@@ -3,10 +3,10 @@
 
 	use JetBrains\PhpStorm\Pure;
 
-	class MethodAlreadyExists extends \Exception {
+	class NotSupported extends \Exception {
 
 		#[Pure]
-		public function __construct($message = "Method already exists.", $code = 1, \Throwable $previous = null) {
+		public function __construct($message = "PHP not supported need extension.", $code = 0, \Throwable $previous = null) {
 			parent::__construct($message, $code, $previous);
 		}
 

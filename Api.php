@@ -12,8 +12,9 @@
 	class Api {
 
 		private array $methods;
+		private array $altFunctions; // array of [callable(Server, method_name, ?user_id), need_authorization]
 		private mixed $functionNeedAdmin; // PHP 8.0 not supported private class variable of callable
-		private array $functionNeedAuthorization;// callable, parameter, header/get&post
+		private array $functionNeedAuthorization;// array of callable, parameter, header/get&post
 
 		/**
 		 * API Constructor.
@@ -46,7 +47,7 @@
 		 * @param bool $need_admin: whether it is necessary to check administrator rights
 		 * @throws MethodAlreadyExists
 		 */
-		public function addMethod(string $method, callable $function, array $params = [], array $limits = [1500, 150, 2],
+		public function addMethod(string $method, callable $function, array $params = [], array $limits = [2, 150, 300],
 		                          bool $need_authorization = true, bool $need_admin = false): void {
 			if(!empty($this->methods[$method])) {
 				throw new MethodAlreadyExists();
@@ -139,6 +140,16 @@
 			$this->functionNeedAuthorization = [$function, $parameter, $type];
 		}
 
+		public function addAltFunction(callable $function): void {
+			try {
+
+			} catch(\Exception) {
+
+			}
+
+			$this->altFunctions[] = $function;
+		}
+
 		/**
 		 * Get a merge array of GET and POST parameters.
 		 *
@@ -156,7 +167,7 @@
 		 * @param string $method_name
 		 * @param Servers|Server $servers
 		 * @return Response
-		 * @throws DB\Exceptions\ServerNotExists
+		 * @throws DB\Exceptions\ServerNotExists|Exceptions\NotSupported
 		 */
 		public function processRequest(string $method_name, Servers|Server $servers): Response {
 			if(empty($this->methods[$method_name])) {
@@ -190,20 +201,32 @@
 						Authorization::setIsAuth(true);
 					}
 				} else {
-					if(!Authorization::isAuth($server, $params['access_token'])) {
+					if(!Authorization::isAuth($server, @$params['access_token'])) {
 						return new Response(401, new ErrorResponse(401, "Authorization failed: access_token was missing or invalid."));
 					}
 				}
-			}
-			if(!Authorization::checkingLimits($server, $method['limits'], $method_name, $params['access_token'])) {
 
+				$limits = Authorization::checkingLimits($server, $method['limits'], $method_name, @$params['access_token']);
+				if($limits !== 1) {
+					return match($limits) {
+						0 => new Response(500, new ErrorResponse(500, "Authorization failed: no way to check params.")),
+						-1 => new Response(429, new ErrorResponse(429, "Too many requests per second.")),
+						-2 => new Response(429, new ErrorResponse(429, "Rate limit reached.")),
+						default => new Response(500, new ErrorResponse(500, "Authorization failed: unknown error.")),
+					};
+				}
 			}
 			if($method['need_admin']) {
-				$user_id = Authorization::getUserId($server, $params['access_token']);
+				$user_id = Authorization::getUserId($server, @$params['access_token']);
 				if(is_int($user_id)) {
 					if(!call_user_func($this->functionNeedAdmin, $servers, $user_id)) {
 						return new Response(404, new ErrorResponse(404, "Unknown method requested."));
 					}
+				}
+			}
+			if($this->altFunctions != null) {
+				foreach($this->altFunctions as $function) {
+
 				}
 			}
 			if(($missed = array_diff($method['params'], array_keys(array_diff($params, [null])))) != null) {

@@ -10,7 +10,7 @@
 		private OKResponse|ErrorResponse $response;
 
 		#[NoReturn]
-		public function __construct(int $http_code = 200, OKResponse|ErrorResponse $response,
+		public function __construct(int $http_code, OKResponse|ErrorResponse $response,
 		                            bool $need_generation = true) {
 			$this->http_code = $http_code;
 			$this->response = $response;

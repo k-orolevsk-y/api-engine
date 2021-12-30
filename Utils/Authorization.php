@@ -3,6 +3,7 @@
 
 	use Me\Korolevsky\Api\DB\Server;
 	use JetBrains\PhpStorm\ArrayShape;
+	use Me\Korolevsky\Api\Exceptions\NotSupported;
 
 	class Authorization {
 
@@ -50,6 +51,7 @@
 			$access_token['access_token'] = $token;
 			$access_token['time'] = time();
 			$access_token['ip'] = Ip::get();
+			$access_token['without_limits'] = 0;
 			$server->store($access_token);
 
 			return [
@@ -58,17 +60,60 @@
 			];
 		}
 
-		public static function checkingLimits(Server $server, array $limits, string $method, string $access_token): bool {
+		public function resetAccessToken(): array {
+
+		}
+
+		/**
+		 * @throws NotSupported
+		 */
+		public static function checkingLimits(Server $server, array $limits, string $method, string $access_token): int {
 			$token = $server->findOne('access_tokens', "WHERE `access_token` = ?", [ $access_token ]);
 			if($token->isNull()) {
-				return false;
+				return 0;
+			} elseif(@$token['without_limits']) {
+				return 1;
 			}
 
-			$limits = $server->findOne('limits', 'WHERE `access_token_id` = ? AND `method` = ?', [ $token['id'], $method ]);
-			if($limits->isNull()) {
-				$limits = $server->dispense('limits');
-				$limits['access_token_id'] = $token['id'];
+			if(!class_exists("Memcached")) {
+				throw new NotSupported('PHP not supported need extension: memcached.');
 			}
+
+			$memcached = new \Memcached();
+			$memcached->addServer('localhost', 11211);
+
+			$keys = [
+				'method' => "limits_${method}_${access_token}",
+				'ip' => "limits_".Ip::get()
+			];
+
+
+			$returned_code = 1;
+			foreach($keys as $key) {
+				$times = ['second' => 1, 'half_hour' => 1800, 'hour' => 3600];
+				foreach($times as $name => $time) {
+					$key_for_limits = $name == "second" ? 0 : ($name == "half_hour" ? 1 : 2);
+					if($limits[$key] < 1) {
+						continue;
+					}
+
+					$key = "${name}_${key}";
+					$limit = $memcached->getByKey($server->getDbName(), $key);
+					if(!$limit) {
+						$limit = [0, time()+$time];
+						$memcached->setByKey($server->getDbName(), $key, $limit, $limit[1]);
+					}
+
+					$limit[0] += 1;
+					$memcached->replaceByKey($server->getDbName(), $key, $limit, $limit[1]);
+
+					if($limit[0] >= $limits[$key_for_limits]) {
+						$returned_code = $name == 'second' ? -1 : -2;
+					}
+				}
+			}
+
+			return $returned_code;
 		}
 
 

@@ -6,6 +6,7 @@
 	class Server {
 
 		private mysqli $connect;
+		private string $dbname;
 
 		/**
 		 * Server constructor.
@@ -20,6 +21,7 @@
 		public function __construct(string $host, string $user, string $password,
 		                            string $database, int $port = 3306, string $charset = "utf8mb4") {
 			$this->connect = @new mysqli($host, $user, $password, $database, $port);
+			$this->dbname = $database;
 			if($this->isConnected()) {
 				$this->connect->set_charset($charset);
 			}
@@ -112,6 +114,13 @@
 
 			$object['id'] = $object->getInfo('id');
 			return !$result ? false : $object;
+		}
+
+		/**
+		 * @return string
+		 */
+		public function getDbName(): string {
+			return $this->dbname;
 		}
 
 		public function isConnected(): bool {
