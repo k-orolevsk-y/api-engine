@@ -270,7 +270,12 @@
 				return new Response(400, new ErrorResponse(400, "Parameters error or invalid: ".array_shift($missed)." a required parameter."));
 			}
 
-			return call_user_func($method['callable'], $servers, self::getParams());
+			$response = call_user_func($method['callable'], $servers, self::getParams());
+			if(!$response instanceof Response) {
+				return new Response(500, new ErrorResponse(500, "The method didn't return a response."));
+			}
+
+			return $response;
 		}
 
 		/**
