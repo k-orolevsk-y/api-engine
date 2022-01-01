@@ -1,0 +1,9 @@
+server {
+    error_page 403 /index.php;
+
+    location / {
+      if (!-e $request_filename){
+        rewrite ^(.*)$ /index.php break;
+      }
+    }
+}

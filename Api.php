@@ -9,6 +9,12 @@
 	use Me\Korolevsky\Api\Utils\Response\ErrorResponse;
 	use Me\Korolevsky\Api\Exceptions\MethodAlreadyExists;
 
+	/**
+	 * Class Api.
+	 * Main class of API.
+	 *
+	 * @package Me\Korolevsky\Api
+	 */
 	class Api {
 
 		private array $methods;
