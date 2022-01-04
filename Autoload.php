@@ -19,8 +19,8 @@
 				$classname = str_replace('\\', '/', $classname);
 				$filepath = @explode('Me/Korolevsky/Api/', $classname)[1];
 
-				if(file_exists("$filepath.php")) {
-					require "$filepath.php";
+				if(file_exists(__DIR__."/$filepath.php")) {
+					require __DIR__."/$filepath.php";
 				}
 			});
 		}

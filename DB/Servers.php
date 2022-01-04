@@ -55,7 +55,12 @@
 		 * @throws ServerNotExists
 		 */
 		public function selectServer(string|int $key): Server {
-			$server = $this->servers[$key];
+			if(is_int($key)) {
+				$server = array_values($this->servers)[$key];
+			} else {
+				$server = $this->servers[$key];
+			}
+
 			if(empty($server)) {
 				throw new ServerNotExists();
 			}
