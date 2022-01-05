@@ -36,7 +36,11 @@
 			}
 
 			set_exception_handler(function(\Exception|\Error $exception) {
-				$this->shutdown(-1);
+				$this->shutdown(-1, [
+					'code' => $exception->getCode(),
+					'msg' => $exception->getMessage(),
+					'traceback' => $exception->getTrace()
+				]);
 			});
 
 			$this->task_id = $task_id;
@@ -84,12 +88,12 @@
 		 * @param int $code
 		 */
 		#[NoReturn]
-		private function shutdown(int $code): void {
+		private function shutdown(int $code, ?array $error = null): void {
 			if($code != 1 && !empty($this->server_name)) {
 				$memcached = new \Memcached();
 				$memcached->addServer('localhost', 11211);
 
-				$this->task['result'] = ['error_code' => $code];
+				$this->task['result'] = ['error_code' => $code, 'error' => $error];
 				$memcached->setByKey($this->server_name, "task_{$this->task_id}", $this->task, $this->task['time']);
 			}
 
