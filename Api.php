@@ -227,9 +227,13 @@
 					$func = $this->functionNeedAuthorization;
 					if($func[2]) {
 						$result = call_user_func($func[0], $servers, strval($params[$func[1]]));
+
+						$param_for_limits = strval($params[$func[1]]);
 					} else {
 						$params_header = array_change_key_case(getallheaders(), CASE_LOWER);
 						$result = call_user_func($func[0], $servers, strval($params_header[$func[1]]));
+
+						$param_for_limits = strval($params_header[$func[1]]);
 					}
 
 					if(!$result) {
@@ -241,9 +245,11 @@
 					if(!Authorization::isAuth($server, @$params['access_token'])) {
 						return new Response(401, new ErrorResponse(401, "Authorization failed: access_token was missing or invalid."));
 					}
+
+					$param_for_limits = @$params['access_token'];
 				}
 
-				$limits = Authorization::checkingLimits($server, $method['limits'], $method_name, @$params['access_token']);
+				$limits = Authorization::checkingLimits($server, $method['limits'], $method_name, $param_for_limits);
 				if($limits !== 1) {
 					return match($limits) {
 						0 => new Response(500, new ErrorResponse(500, "Authorization failed: no way to check params.")),
