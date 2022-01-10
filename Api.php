@@ -207,7 +207,9 @@
 		 * @throws DB\Exceptions\ServerNotExists|Exceptions\NotSupported
 		 */
 		public function processRequest(string $method_name, Servers|Server $servers): Response {
-			if(empty($this->methods[$method_name])) {
+			if(empty($method_name)) {
+				return new Response(404, new ErrorResponse(404, "Error getting method: `method` field can't be empty."));
+			} elseif(empty($this->methods[$method_name])) {
 				return new Response(404, new ErrorResponse(404, "Unknown method requested."));
 			} elseif(!$servers->isConnected()) {
 				return new Response(404, new ErrorResponse(500, "Error connecting database, try later.", [ 'db' => [ 'error_message' => $servers->getErrorConnect() ] ]));
