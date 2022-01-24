@@ -193,6 +193,11 @@
 		 * @return array
 		 */
 		public static function getParams(): array {
+			$raw_data = json_decode(file_get_contents('php://input'), true);
+			if(isset($raw_data)) {
+				$_GET = array_merge($_GET, $raw_data);
+			}
+
 			return array_change_key_case(array_merge($_GET, $_POST), CASE_LOWER);
 		}
 
